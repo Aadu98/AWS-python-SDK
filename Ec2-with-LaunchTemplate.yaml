@@ -1,0 +1,76 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: T2.micro Launch template
+Parameters:
+  VPC:
+    Type: AWS::EC2::VPC::Id
+    Description: Choose which VPC the Application Load Balancer should be deployed to
+
+Resources:
+  #Creating Separate SSH security group for SSHing to the instances.
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from anywhere.
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+      
+  AllowAllInOutTrafficPort80: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable Inbound and outbound HTTP traffic on port 80 from anywhere.
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+      SecurityGroupEgress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+
+  myLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateName: MyLaunchTemplate
+      LaunchTemplateData: 
+        #if You want extra EBS volume
+        # BlockDeviceMappings:
+        #   - DeviceName: /dev/xvdcz 
+        #     Ebs:
+        #       DeleteOnTermination: true
+        #       Encrypted: true
+        #       VolumeSize: 8
+        #       VolumeType: gp2
+        ImageId: ami-01cc34ab2709337aa
+        InstanceType: t2.micro
+        KeyName: demo-virgina
+        Monitoring: 
+          Enabled: true
+        SecurityGroupIds: 
+          - !Ref SSHSecurityGroup
+          - !Ref AllowAllInOutTrafficPort80
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash
+              # Use this for your user data (script from top to bottom)
+              # install httpd (Linux 2 version)
+              yum update -y
+              yum install -y httpd
+              systemctl start httpd
+              systemctl enable httpd
+              echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html 
+  
+  Myec2instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      LaunchTemplate:
+        LaunchTemplateId: !Ref myLaunchTemplate
+        Version: 1
