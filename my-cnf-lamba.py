@@ -21,4 +21,5 @@ params = [
     }
 ]
 
+#git update for fun
 my_cnf.create_stack(StackName = 'myadarshsonare', TemplateBody=stack, Parameters= params)
